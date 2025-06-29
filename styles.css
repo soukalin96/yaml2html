@@ -266,3 +266,26 @@ body {
 .filtered-out {
     display: none !important;
 }
+
+
+.expand-collapse-controls {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.expand-control-btn {
+    padding: 10px 20px;
+    margin: 0 10px;
+    font-size: 15px;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+    color: white;
+    cursor: pointer;
+    transition: 0.3s ease;
+    font-weight: 600;
+}
+
+.expand-control-btn:hover {
+    background: linear-gradient(135deg, #34e89e 0%, #0f3443 100%);
+}

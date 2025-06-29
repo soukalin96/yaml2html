@@ -281,4 +281,32 @@ document.getElementById('filterZeroFails')?.addEventListener('change', () => {
 });
 
 
+// Expand All / Collapse All Level 4 rows
+document.addEventListener("DOMContentLoaded", () => {
+    const expandAllBtn = document.getElementById("expandAllBtn");
+    const collapseAllBtn = document.getElementById("collapseAllBtn");
+
+    expandAllBtn?.addEventListener("click", () => {
+        document.querySelectorAll(".expandable-row").forEach(row => {
+            const rowId = row.id;
+            const btn = row.querySelector(".expand-btn");
+            if (btn && !btn.classList.contains("expanded")) {
+                toggleRow(rowId);
+            }
+        });
+    });
+
+    collapseAllBtn?.addEventListener("click", () => {
+        document.querySelectorAll(".expandable-row").forEach(row => {
+            const rowId = row.id;
+            const btn = row.querySelector(".expand-btn");
+            if (btn && btn.classList.contains("expanded")) {
+                toggleRow(rowId);
+            }
+        });
+    });
+});
+
+
+
 // Auto-convert functionality removed - now file-driven only

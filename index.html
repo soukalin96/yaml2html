@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -27,8 +29,15 @@
                 </label>
             </div>
 
+            <!-- ✅ Expand/Collapse All Controls -->
+            <div class="expand-collapse-controls">
+                <button id="expandAllBtn" class="expand-control-btn">Expand All</button>
+                <button id="collapseAllBtn" class="expand-control-btn">Collapse All</button>
+            </div>
+
             <div id="file-status" class="file-status"></div>
         </div>
+
 
         <div class="table-container">
             <div id="output"></div>
@@ -37,4 +46,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
