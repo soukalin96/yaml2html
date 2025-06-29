@@ -1,0 +1,46 @@
+log_yoyoyoy:
+  JSS_M40_1000mv:
+    SG500:
+      checkin:
+        checkin+a:
+          pass: 43
+          fail: 0
+          MD: "M1
+              aasdasd
+              asdas"
+        checkin+b:
+          pass: 45
+          fail: 1
+          MD: "M2"
+        checkin+c:
+          pass: 46
+          fail: 2
+          MD: "M3"
+      chkwr:
+        checkin+a:
+          pass: 43
+          fail: 0
+          MD: "M1"
+        checkin+b:
+          pass: 45
+          fail: 1
+          MD: "M2"
+        checkin+c:
+          pass: 46
+          fail: 0
+          MD: "M3"
+    SG1600:
+      checkin:
+        checkin+a:
+          pass: 56
+          fail: 4
+          MD: "N1"
+        checkin+b:
+          pass: 32
+          fail: 0
+          MD: "N2"
+        checkin+c:
+          pass: 99
+          fail: 41
+          MD: "N3"
+          

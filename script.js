@@ -42,83 +42,57 @@ function showError(message) {
 
 function generateTable(data) {
     const output = document.getElementById('output');
-    
+
     if (!data || typeof data !== 'object') {
         showError('Invalid data structure');
         return;
     }
 
-    // Process each Level 1 key (header)
     let html = '';
-    
+
     for (const [level1Key, level1Data] of Object.entries(data)) {
         html += `<h2 class="main-title">${level1Key}</h2>`;
-        
-        if (!level1Data || typeof level1Data !== 'object') {
-            continue;
-        }
 
-        // Get all Level 2 keys (columns)
+        if (!level1Data || typeof level1Data !== 'object') continue;
+
         const level2Keys = Object.keys(level1Data);
-        
         if (level2Keys.length === 0) {
             html += '<div class="empty-state">No data available</div>';
             continue;
         }
 
-        // Get all Level 3 keys (sub-columns) from all Level 2 entries
         const level3KeysByLevel2 = {};
         for (const level2Key of level2Keys) {
             const level2Data = level1Data[level2Key];
-            if (level2Data && typeof level2Data === 'object') {
-                level3KeysByLevel2[level2Key] = Object.keys(level2Data);
-            } else {
-                level3KeysByLevel2[level2Key] = [];
-            }
+            level3KeysByLevel2[level2Key] = level2Data && typeof level2Data === 'object'
+                ? Object.keys(level2Data) : [];
         }
 
-        // Get all Level 4 keys (main expandable rows)
         const level4Keys = new Set();
         for (const level2Key of level2Keys) {
             const level2Data = level1Data[level2Key];
-            if (level2Data && typeof level2Data === 'object') {
-                for (const level3Key of Object.keys(level2Data)) {
-                    const level3Data = level2Data[level3Key];
-                    if (level3Data && typeof level3Data === 'object') {
-                        Object.keys(level3Data).forEach(key => level4Keys.add(key));
-                    }
+            for (const level3Key of Object.keys(level2Data || {})) {
+                const level3Data = level2Data[level3Key];
+                for (const level4Key of Object.keys(level3Data || {})) {
+                    level4Keys.add(level4Key);
                 }
             }
         }
 
         const level4Array = Array.from(level4Keys);
-
         if (level4Array.length === 0) {
             html += '<div class="empty-state">No structured data available</div>';
             continue;
         }
 
-        // Calculate total columns needed
-        let totalColumns = 0;
-        for (const level2Key of level2Keys) {
-            totalColumns += level3KeysByLevel2[level2Key].length;
-        }
-
-        // Create table
-        html += '<table class="yaml-table">';
-        
-        // Level 2 header row (main columns)
-        html += '<thead><tr><th rowspan="2">Regression</th>';
+        html += '<table class="yaml-table"><thead><tr><th rowspan="2">Regression</th>';
         level2Keys.forEach(level2Key => {
-            const level3Count = level3KeysByLevel2[level2Key].length;
-            if (level3Count > 0) {
-                html += `<th colspan="${level3Count}" class="level2-header">${level2Key}</th>`;
+            const count = level3KeysByLevel2[level2Key].length;
+            if (count > 0) {
+                html += `<th colspan="${count}" class="level2-header">${level2Key}</th>`;
             }
         });
-        html += '</tr>';
-
-        // Level 3 header row (sub-columns)
-        html += '<tr>';
+        html += '</tr><tr>';
         level2Keys.forEach(level2Key => {
             level3KeysByLevel2[level2Key].forEach(level3Key => {
                 html += `<th>${level3Key}</th>`;
@@ -128,197 +102,110 @@ function generateTable(data) {
 
         let rowId = 0;
 
-        // Main rows - Level 4 keys as expandable rows
         level4Array.forEach(level4Key => {
             const mainRowId = `main-${rowId}`;
             html += `<tr class="expandable-row" id="${mainRowId}">`;
             html += `<td><button class="expand-btn" onclick="toggleRow('${mainRowId}')">▶</button> ${level4Key}</td>`;
-            
-            // For each Level 2 column
+
             level2Keys.forEach(level2Key => {
                 const level2Data = level1Data[level2Key];
-                
-                // For each Level 3 sub-column
                 level3KeysByLevel2[level2Key].forEach(level3Key => {
-                    html += '<td class="pass-fail-cell">';
-                    
-                    // Calculate total pass/fail for this Level 4 key in this column
-                    let totalPass = 0;
-                    let totalFail = 0;
-                    let hasData = false;
-                    
-                    if (level2Data && level2Data[level3Key] && level2Data[level3Key][level4Key]) {
-                        const level4Data = level2Data[level3Key][level4Key];
-                        
-                        // Sum up all pass/fail values from Level 5 (leaf nodes)
-                        for (const [level5Key, level5Data] of Object.entries(level4Data)) {
-                            if (typeof level5Data === 'object') {
-                                if (level5Data.pass !== undefined) {
-                                    totalPass += level5Data.pass;
-                                    hasData = true;
-                                }
-                                if (level5Data.fail !== undefined) {
-                                    totalFail += level5Data.fail;
-                                    hasData = true;
-                                }
-                            }
+                    let totalPass = 0, totalFail = 0, hasData = false;
+                    const cellData = level2Data?.[level3Key]?.[level4Key];
+                    for (const val of Object.values(cellData || {})) {
+                        if (typeof val === 'object') {
+                            if (val.pass) totalPass += val.pass;
+                            if (val.fail) totalFail += val.fail;
+                            hasData = true;
                         }
                     }
-                    
-                    if (hasData) {
-                        html += '<div class="pass-fail-display">';
-                        html += `<span class="pass-value">${totalPass}</span>`;
-                        html += `<span class="fail-value">${totalFail}</span>`;
-                        html += '</div>';
-                    } else {
-                        html += '-';
-                    }
-                    
+                    html += '<td class="pass-fail-cell">';
+                    html += hasData
+                        ? `<div class="pass-fail-display"><span class="pass-value">${totalPass}</span><span class="fail-value">${totalFail}</span></div>`
+                        : '-';
                     html += '</td>';
                 });
             });
-            
             html += '</tr>';
 
-            // Get Level 5 keys for this Level 4
+            // --- Level 5 sub-rows
             const level5Keys = new Set();
             for (const level2Key of level2Keys) {
                 const level2Data = level1Data[level2Key];
-                if (level2Data && typeof level2Data === 'object') {
-                    for (const level3Key of Object.keys(level2Data)) {
-                        const level3Data = level2Data[level3Key];
-                        if (level3Data && level3Data[level4Key] && typeof level3Data[level4Key] === 'object') {
-                            Object.keys(level3Data[level4Key]).forEach(key => level5Keys.add(key));
-                        }
+                for (const level3Key of Object.keys(level2Data || {})) {
+                    const l3 = level2Data[level3Key];
+                    if (l3?.[level4Key]) {
+                        Object.keys(l3[level4Key]).forEach(k => level5Keys.add(k));
                     }
                 }
             }
 
             const level5Array = Array.from(level5Keys);
+            const filterFails = document.getElementById('filterZeroFails')?.checked;
 
-            // Sub-rows - Level 5 keys (like checkin+a, checkin+b, etc.) - Show Pass/Fail values
             level5Array.forEach(level5Key => {
+                let totalFails = 0;
+                for (const level2Key of level2Keys) {
+                    const level2Data = level1Data[level2Key];
+                    for (const level3Key of Object.keys(level2Data || {})) {
+                        const val = level2Data[level3Key]?.[level4Key]?.[level5Key];
+                        if (val?.fail) totalFails += val.fail;
+                    }
+                }
+
+                const shouldHide = filterFails && totalFails === 0;
                 const subRowId = `sub-${rowId}-${level5Key.replace(/\+/g, '-')}`;
-                html += `<tr class="sub-row hidden-row" data-parent="${mainRowId}" id="${subRowId}">`;
+                html += `<tr class="sub-row hidden-row ${shouldHide ? 'filtered-out' : ''}" data-parent="${mainRowId}" id="${subRowId}">`;
                 html += `<td><button class="expand-btn" onclick="toggleRow('${subRowId}')">▶</button> ${level5Key}</td>`;
-                
-                // For each Level 2 column
+
                 level2Keys.forEach(level2Key => {
                     const level2Data = level1Data[level2Key];
-                    
-                    // For each Level 3 sub-column
                     level3KeysByLevel2[level2Key].forEach(level3Key => {
+                        const val = level2Data?.[level3Key]?.[level4Key]?.[level5Key];
                         html += '<td class="pass-fail-cell">';
-                        
-                        if (level2Data && level2Data[level3Key] && level2Data[level3Key][level4Key] && level2Data[level3Key][level4Key][level5Key]) {
-                            const level5Data = level2Data[level3Key][level4Key][level5Key];
-                            
-                            if (typeof level5Data === 'object') {
-                                // Show Pass/Fail values directly
-                                const passValue = level5Data.pass !== undefined ? level5Data.pass : '-';
-                                const failValue = level5Data.fail !== undefined ? level5Data.fail : '-';
-                                
-                                html += '<div class="pass-fail-display">';
-                                html += `<span class="pass-value">${passValue}</span>`;
-                                html += `<span class="fail-value">${failValue}</span>`;
-                                html += '</div>';
-                            } else {
-                                html += `<span class="md-cell">Data available</span>`;
-                            }
+                        if (typeof val === 'object') {
+                            html += `<div class="pass-fail-display"><span class="pass-value">${val.pass ?? '-'}</span><span class="fail-value">${val.fail ?? '-'}</span></div>`;
                         } else {
                             html += '-';
                         }
-                        
                         html += '</td>';
                     });
                 });
-                
+
                 html += '</tr>';
 
-                // Metadata row - only show MD values when sub-row is expanded
-                html += `<tr class="md-row hidden-row" data-parent="${subRowId}">`;
-                html += `<td>Metadata</td>`;
-                
-                // For each Level 2 column
+                html += `<tr class="md-row hidden-row ${shouldHide ? 'filtered-out' : ''}" data-parent="${subRowId}"><td>Metadata</td>`;
                 level2Keys.forEach(level2Key => {
                     const level2Data = level1Data[level2Key];
-                    
-                    // For each Level 3 sub-column
                     level3KeysByLevel2[level2Key].forEach(level3Key => {
+                        const val = level2Data?.[level3Key]?.[level4Key]?.[level5Key];
                         html += '<td>';
-                        
-                        if (level2Data && level2Data[level3Key] && level2Data[level3Key][level4Key] && level2Data[level3Key][level4Key][level5Key]) {
-                            const level5Data = level2Data[level3Key][level4Key][level5Key];
-                            
-                            if (typeof level5Data === 'object' && level5Data.MD !== undefined) {
-                                html += `<code class="md-cell">${level5Data.MD}</code>`;
-                            } else {
-                                html += '-';
-                            }
-                        } else {
-                            html += '-';
-                        }
-                        
+                        html += val?.MD ? `<code class="md-cell">${val.MD}</code>` : '-';
                         html += '</td>';
                     });
                 });
-                
                 html += '</tr>';
             });
 
             rowId++;
         });
 
-        // Add Total row at the end
-        html += '<tr class="total-row">';
-        html += '<td><strong>Total</strong></td>';
-        
-        // For each Level 2 column
+        // Total row (unchanged)
+        html += '<tr class="total-row"><td><strong>Total</strong></td>';
         level2Keys.forEach(level2Key => {
             const level2Data = level1Data[level2Key];
-            
-            // For each Level 3 sub-column
             level3KeysByLevel2[level2Key].forEach(level3Key => {
-                html += '<td class="pass-fail-cell">';
-                
-                // Calculate grand total pass/fail for this column across all Level 4 keys
-                let grandTotalPass = 0;
-                let grandTotalFail = 0;
-                let hasData = false;
-                
+                let totalPass = 0, totalFail = 0;
                 level4Array.forEach(level4Key => {
-                    if (level2Data && level2Data[level3Key] && level2Data[level3Key][level4Key]) {
-                        const level4Data = level2Data[level3Key][level4Key];
-                        
-                        // Sum up all pass/fail values from Level 5 (leaf nodes)
-                        for (const [level5Key, level5Data] of Object.entries(level4Data)) {
-                            if (typeof level5Data === 'object') {
-                                if (level5Data.pass !== undefined) {
-                                    grandTotalPass += level5Data.pass;
-                                    hasData = true;
-                                }
-                                if (level5Data.fail !== undefined) {
-                                    grandTotalFail += level5Data.fail;
-                                    hasData = true;
-                                }
-                            }
-                        }
+                    const val = level2Data?.[level3Key]?.[level4Key];
+                    for (const v of Object.values(val || {})) {
+                        if (v?.pass) totalPass += v.pass;
+                        if (v?.fail) totalFail += v.fail;
                     }
                 });
-                
-                if (hasData) {
-                    html += '<div class="pass-fail-display">';
-                    html += `<span class="pass-value">${grandTotalPass}</span>`;
-                    html += `<span class="fail-value">${grandTotalFail}</span>`;
-                    html += '</div>';
-                } else {
-                    html += '-';
-                }
-                
-                html += '</td>';
+                html += `<td class="pass-fail-cell"><div class="pass-fail-display"><span class="pass-value">${totalPass}</span><span class="fail-value">${totalFail}</span></div></td>`;
             });
         });
-        
         html += '</tr>';
 
         html += '</tbody></table>';
@@ -326,6 +213,7 @@ function generateTable(data) {
 
     output.innerHTML = html || '<div class="empty-state">No data to display</div>';
 }
+
 
 function toggleRow(rowId) {
     const row = document.getElementById(rowId);
@@ -373,5 +261,24 @@ function formatNestedData(data, depth = 0) {
     
     return html;
 }
+
+
+document.getElementById('filterZeroFails')?.addEventListener('change', () => {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const yamlContent = e.target.result;
+                const data = jsyaml.load(yamlContent);
+                generateTable(data);
+            } catch (error) {
+                console.error(error);
+            }
+        };
+        reader.readAsText(fileInput.files[0]);
+    }
+});
+
 
 // Auto-convert functionality removed - now file-driven only
