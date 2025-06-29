@@ -4,20 +4,20 @@
 document.getElementById('fileInput').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const statusDiv = document.getElementById('file-status');
-    
+
     if (file) {
         // Show loading status
         statusDiv.innerHTML = '<div class="file-status">Loading file...</div>';
-        
+
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const yamlContent = e.target.result;
                 const data = jsyaml.load(yamlContent);
-                
+
                 // Show success status
                 statusDiv.innerHTML = `<div class="file-status success">✓ File "${file.name}" loaded successfully</div>`;
-                
+
                 // Generate table immediately
                 generateTable(data);
             } catch (error) {
@@ -112,10 +112,11 @@ function generateTable(data) {
                 level3KeysByLevel2[level2Key].forEach(level3Key => {
                     let totalPass = 0, totalFail = 0, hasData = false;
                     const cellData = level2Data?.[level3Key]?.[level4Key];
+                    // Iterate over values to sum pass/fail, handling potential non-object values
                     for (const val of Object.values(cellData || {})) {
-                        if (typeof val === 'object') {
-                            if (val.pass) totalPass += val.pass;
-                            if (val.fail) totalFail += val.fail;
+                        if (typeof val === 'object' && val !== null) {
+                            if (typeof val.pass === 'number') totalPass += val.pass;
+                            if (typeof val.fail === 'number') totalFail += val.fail;
                             hasData = true;
                         }
                     }
@@ -134,7 +135,7 @@ function generateTable(data) {
                 const level2Data = level1Data[level2Key];
                 for (const level3Key of Object.keys(level2Data || {})) {
                     const l3 = level2Data[level3Key];
-                    if (l3?.[level4Key]) {
+                    if (l3?.[level4Key] && typeof l3[level4Key] === 'object') {
                         Object.keys(l3[level4Key]).forEach(k => level5Keys.add(k));
                     }
                 }
@@ -148,13 +149,13 @@ function generateTable(data) {
                 for (const level2Key of level2Keys) {
                     const level2Data = level1Data[level2Key];
                     for (const level3Key of Object.keys(level2Data || {})) {
-                        const val = level2Data[level3Key]?.[level4Key]?.[level5Key];
-                        if (val?.fail) totalFails += val.fail;
+                        const val = level2Data?.[level3Key]?.[level4Key]?.[level5Key];
+                        if (val && typeof val.fail === 'number') totalFails += val.fail;
                     }
                 }
 
                 const shouldHide = filterFails && totalFails === 0;
-                const subRowId = `sub-${rowId}-${level5Key.replace(/\+/g, '-')}`;
+                const subRowId = `sub-${rowId}-${level5Key.replace(/[^a-zA-Z0-9-_]/g, '-')}`; // Sanitize ID
                 html += `<tr class="sub-row hidden-row ${shouldHide ? 'filtered-out' : ''}" data-parent="${mainRowId}" id="${subRowId}">`;
                 html += `<td><button class="expand-btn" onclick="toggleRow('${subRowId}')">▶</button> ${level5Key}</td>`;
 
@@ -163,7 +164,7 @@ function generateTable(data) {
                     level3KeysByLevel2[level2Key].forEach(level3Key => {
                         const val = level2Data?.[level3Key]?.[level4Key]?.[level5Key];
                         html += '<td class="pass-fail-cell">';
-                        if (typeof val === 'object') {
+                        if (typeof val === 'object' && val !== null) {
                             html += `<div class="pass-fail-display"><span class="pass-value">${val.pass ?? '-'}</span><span class="fail-value">${val.fail ?? '-'}</span></div>`;
                         } else {
                             html += '-';
@@ -174,13 +175,23 @@ function generateTable(data) {
 
                 html += '</tr>';
 
+                // MD row
                 html += `<tr class="md-row hidden-row ${shouldHide ? 'filtered-out' : ''}" data-parent="${subRowId}"><td>Metadata</td>`;
                 level2Keys.forEach(level2Key => {
                     const level2Data = level1Data[level2Key];
                     level3KeysByLevel2[level2Key].forEach(level3Key => {
                         const val = level2Data?.[level3Key]?.[level4Key]?.[level5Key];
                         html += '<td>';
-                        html += val?.MD ? `<code class="md-cell">${val.MD}</code>` : '-';
+                        if (val && val.MD) {
+                            // Check if MD is an object and stringify it for display
+                            if (typeof val.MD === 'object' && val.MD !== null) {
+                                html += `<code class="md-cell">${JSON.stringify(val.MD, null, 2)}</code>`;
+                            } else {
+                                html += `<code class="md-cell">${val.MD}</code>`;
+                            }
+                        } else {
+                            html += '-';
+                        }
                         html += '</td>';
                     });
                 });
@@ -198,9 +209,12 @@ function generateTable(data) {
                 let totalPass = 0, totalFail = 0;
                 level4Array.forEach(level4Key => {
                     const val = level2Data?.[level3Key]?.[level4Key];
+                    // Iterate over values to sum pass/fail, handling potential non-object values
                     for (const v of Object.values(val || {})) {
-                        if (v?.pass) totalPass += v.pass;
-                        if (v?.fail) totalFail += v.fail;
+                        if (typeof v === 'object' && v !== null) {
+                            if (typeof v.pass === 'number') totalPass += v.pass;
+                            if (typeof v.fail === 'number') totalFail += v.fail;
+                        }
                     }
                 });
                 html += `<td class="pass-fail-cell"><div class="pass-fail-display"><span class="pass-value">${totalPass}</span><span class="fail-value">${totalFail}</span></div></td>`;
@@ -219,13 +233,13 @@ function toggleRow(rowId) {
     const row = document.getElementById(rowId);
     const expandBtn = row.querySelector('.expand-btn');
     const isExpanded = expandBtn.classList.contains('expanded');
-    
+
     // Toggle the expand button
     expandBtn.classList.toggle('expanded');
-    
+
     // Find all child rows
     const allRows = document.querySelectorAll(`tr[data-parent="${rowId}"]`);
-    
+
     allRows.forEach(childRow => {
         if (isExpanded) {
             childRow.classList.add('hidden-row');
@@ -242,10 +256,13 @@ function toggleRow(rowId) {
     });
 }
 
+// The formatNestedData function is no longer directly used for MD field display
+// as JSON.stringify is used instead for complex MD objects.
+// Keeping it here for completeness, but it can be removed if not used elsewhere.
 function formatNestedData(data, depth = 0) {
     let html = '';
     const indent = '  '.repeat(depth);
-    
+
     if (typeof data === 'object' && data !== null) {
         for (const [key, value] of Object.entries(data)) {
             if (typeof value === 'object' && value !== null) {
@@ -258,7 +275,7 @@ function formatNestedData(data, depth = 0) {
     } else {
         html += `<div class="cell-data">${indent}${data}</div>`;
     }
-    
+
     return html;
 }
 
@@ -306,7 +323,3 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
-
-
-// Auto-convert functionality removed - now file-driven only
