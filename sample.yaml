@@ -1,0 +1,38 @@
+
+TestCategory1:
+  ColumnA:
+    RegressionSet1:
+      Test1:
+        SubTest1:
+          pass: 10
+          fail: 0
+          MD: "No issues"
+        SubTest2:
+          pass: 5
+          fail: 2
+          MD: "Failed on specific case"
+      RegressionSet2:
+        Test1:
+          SubTest1:
+            pass: 8
+            fail: 1
+            MD: "Minor failure"
+  ColumnB:
+    RegressionSet1:
+      Test1:
+        SubTest1:
+          pass: 12
+          fail: 0
+          MD: "All good"
+TestCategory2:
+  ColumnC:
+    RegressionSet3:
+      Test2:
+        SubTest3:
+          pass: 7
+          fail: 3
+          MD: "Critical failure"
+        SubTest4:
+          pass: 15
+          fail: 0
+          MD: "Passed"
