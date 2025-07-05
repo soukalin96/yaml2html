@@ -4,46 +4,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YAML to Table Converter</title>
-    <script src="js-yaml.min.js"></script>
+    <title>YAML Data Visualizer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>BuildReport</h1>
-            <p>Table</p>
+    <h1>YAML Data Visualizer</h1>
+
+    <div class="controls">
+        <div class="file-input-container">
+            <select id="fileDropdown">
+                <option value="">Select a file...</option>
+            </select>
+            <button id="loadFileBtn">Load Selected File</button>
+            <div id="file-status"></div>
+            <!-- <div id="output"></div> -->
         </div>
 
-        <div class="input-section">
-            <div class="file-input-wrapper">
-                <input type="file" id="fileInput" class="file-input" accept=".yaml,.yml" />
-                <label for="fileInput" class="file-input-button">Choose YAML File</label>
-            </div>
+        <button id="expandAllBtn">Expand All</button>
+        <button id="collapseAllBtn">Collapse All</button>
 
-            <div class="filter-option">
-                <label>
-                    <input type="checkbox" id="filterZeroFails" />
-                    Hide Sub-rows with 0 Fails
-                </label>
-            </div>
-
-            <!-- ✅ Expand/Collapse All Controls -->
-            <div class="expand-collapse-controls">
-                <button id="expandAllBtn" class="expand-control-btn">Expand All</button>
-                <button id="collapseAllBtn" class="expand-control-btn">Collapse All</button>
-            </div>
-
-            <div id="file-status" class="file-status"></div>
+        <div class="checkbox-container">
+            <input type="checkbox" id="filterZeroFails">
+            <label for="filterZeroFails">Hide rows with zero fails</label>
         </div>
 
-
-        <div class="table-container">
-            <div id="output"></div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search Regression Set (Level 3)...">
+            <button id="searchBtnRegressionSet">Search</button>
         </div>
+
+        <!-- NEW SEARCH INPUT FOR LEVEL 4 SUB-ROWS -->
+        <div class="search-container">
+            <input type="text" id="searchSubRowInput" placeholder="Search Regression (Level 4)...">
+            <button id="searchBtnRegression">Search</button>
+        </div>
+
+        <!-- NEW SEARCH INPUT FOR METADATA -->
+        <div class="search-container">
+            <input type="text" id="searchMetadataInput" placeholder="Search Metadata...">
+            <button id="searchBtnMetadata">Search</button>
+        </div>
+
+        <!-- NEW COLUMN SELECTION CONTROLS (Level 2) -->
+        <div class="column-selection-container">
+            <label for="columnSelect">Select Columns (Level 2):</label>
+            <select id="columnSelect" multiple size="5">
+                <!-- Options will be dynamically populated by JavaScript -->
+            </select>
+            <button id="applyColumnSelectionBtn">Apply Columns</button>
+        </div>
+
+        <!-- NEW LEVEL 3 FILTER -->
+        <div class="column-selection-container">
+            <label for="level3FilterSelect">Filter Regression Sets (Level 3):</label>
+            <select id="level3FilterSelect" multiple size="5">
+                <!-- Options will be dynamically populated by JavaScript -->
+            </select>
+            <button id="applyLevel3FilterBtn">Apply Filter</button>
+        </div>
+
+        <!-- NEW RESET BUTTON -->
+        <button id="resetFiltersBtn">Reset All Filters</button>
     </div>
 
+    <div class="container">
+        <div id="output"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
     <script src="script.js"></script>
 </body>
 

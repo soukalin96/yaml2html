@@ -4,48 +4,117 @@ let currentYamlData = null;
 let previousTableState = '';
 let currentFileComments = {};
 
-document.getElementById('fileInput').addEventListener('change', function (e) {
-    const file = e.target.files[0];
+
+// NEW: Function to fetch the list of files and populate the dropdown
+async function populateFileDropdown() {
+    const fileDropdown = document.getElementById('fileDropdown');
     const statusDiv = document.getElementById('file-status');
-
-    if (file) {
-        statusDiv.innerHTML = '<div class="file-status">Loading file...</div>';
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            try {
-                const yamlContent = e.target.result;
-                const data = jsyaml.load(yamlContent);
-                currentYamlData = data; // Store the data globally
-
-                // NEW: Generate a unique ID for the file (e.g., using file name and size)
-                const fileId = `${file.name}-${file.size}`;
-                loadComments(fileId); // Load comments associated with this file
-
-                statusDiv.innerHTML = `<div class="file-status success">✓ File "${file.name}" loaded successfully</div>`;
-                populateColumnSelection(data); // Populates Level 2 columns
-                populateLevel3Filter(data); // New: Populates Level 3 filter
-                generateTable(data); // Generate the table initially
-                updateRowVisibility(); // Apply initial filters and ensure visibility
-                updateSummaryTable();
-                attachCommentBoxListeners(); // Attach listeners for comment boxes
-            } catch (error) {
-                statusDiv.innerHTML = `<div class="file-status error">✗ Error parsing YAML: ${error.message}</div>`;
-                document.getElementById('output').innerHTML = '';
-            }
-        };
-        reader.onerror = function () {
-            statusDiv.innerHTML = '<div class="file-status error">✗ Error reading file</div>';
-        };
-        reader.readAsText(file);
-    } else {
-        statusDiv.innerHTML = '';
-        document.getElementById('output').innerHTML = '';
-        currentYamlData = null; // Clear data if no file
-        document.getElementById('columnSelect').innerHTML = ''; // Clear Level 2 column options
-        document.getElementById('level3FilterSelect').innerHTML = ''; // Clear Level 3 filter options
-        currentFileComments = {}; // Clear comments when no file is loaded
+    try {
+        statusDiv.innerHTML = '<div class="file-status">Loading file list...</div>';
+        const response = await fetch('https://soukalin96.bitbucket.io/db/index.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const fileList = await response.json();
+        fileDropdown.innerHTML = '<option value="">Select a file...</option>'; // Clear and add default
+        fileList.forEach(fileName => {
+            const option = document.createElement('option');
+            option.value = fileName;
+            option.textContent = fileName;
+            fileDropdown.appendChild(option);
+        });
+        statusDiv.innerHTML = '<div class="file-status success">✓ File list loaded.</div>';
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="file-status error">✗ Error loading file list: ${error.message}</div>`;
+        console.error("Error loading file list:", error);
     }
+}
+
+// NEW: Event listener for the Load Selected File button
+document.getElementById('loadFileBtn').addEventListener('click', async function () {
+    const fileDropdown = document.getElementById('fileDropdown');
+    const selectedFileName = fileDropdown.value;
+    const statusDiv = document.getElementById('file-status');
+    if (!selectedFileName) {
+        statusDiv.innerHTML = '<div class="file-status error">✗ Please select a file from the dropdown.</div>';
+        return;
+    }
+    const fileUrl = `https://soukalin96.bitbucket.io/db/${selectedFileName}`;
+    statusDiv.innerHTML = `<div class="file-status">Loading file "${selectedFileName}"...</div>`;
+    try {
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const yamlContent = await response.text();
+        const data = jsyaml.load(yamlContent);
+        currentYamlData = data; // Store the data globally
+        // Generate a unique ID for the file (e.g., using file name)
+        const fileId = selectedFileName; // Using file name as ID for simplicity
+        loadComments(fileId); // Load comments associated with this file
+        statusDiv.innerHTML = `<div class="file-status success">✓ File "${selectedFileName}" loaded successfully</div>`;
+        populateColumnSelection(data); // Populates Level 2 columns
+        populateLevel3Filter(data); // Populates Level 3 filter
+        generateTable(data); // Generate the table initially
+        updateRowVisibility(); // Apply initial filters and ensure visibility
+        updateSummaryTable();
+        attachCommentBoxListeners(); // Attach listeners for comment boxes
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="file-status error">✗ Error parsing YAML or fetching file: ${error.message}</div>`;
+        document.getElementById('output').innerHTML = '';
+        console.error("Error loading or parsing YAML:", error);
+    }
+});
+
+
+// Original DOMContentLoaded listener, modified to call populateFileDropdown
+document.addEventListener("DOMContentLoaded", () => {
+    populateFileDropdown(); // Call this to populate the dropdown on page load
+    const expandAllBtn = document.getElementById("expandAllBtn");
+    const collapseAllBtn = document.getElementById("collapseAllBtn");
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    const applyColumnSelectionBtn = document.getElementById('applyColumnSelectionBtn');
+    const applyLevel3FilterBtn = document.getElementById('applyLevel3FilterBtn');
+    const searchBtnRegressionSet = document.getElementById('searchBtnRegressionSet');
+    const searchBtnRegression = document.getElementById('searchBtnRegression');
+    const searchBtnMetadata = document.getElementById('searchBtnMetadata');
+    expandAllBtn?.addEventListener("click", () => {
+        document.querySelectorAll(".expandable-row").forEach(row => {
+            const rowId = row.id;
+            const btn = row.querySelector(".expand-btn");
+            if (btn && !btn.classList.contains("expanded") && !row.classList.contains('filtered-out')) {
+                toggleRow(rowId);
+            }
+        });
+    });
+    collapseAllBtn?.addEventListener("click", () => {
+        document.querySelectorAll(".expandable-row").forEach(row => {
+            const rowId = row.id;
+            const btn = row.querySelector(".expand-btn");
+            if (btn && btn.classList.contains("expanded")) {
+                toggleRow(rowId);
+            }
+        });
+    });
+    resetFiltersBtn?.addEventListener('click', resetAllFilters);
+    applyColumnSelectionBtn?.addEventListener('click', () => {
+        if (currentYamlData) {
+            generateTable(currentYamlData);
+            updateRowVisibility();
+            updateSummaryTable();
+        }
+    });
+    applyLevel3FilterBtn?.addEventListener('click', () => {
+        if (currentYamlData) {
+            generateTable(currentYamlData);
+            updateRowVisibility();
+            updateSummaryTable();
+        }
+    });
+    searchBtnRegressionSet?.addEventListener('click', () => performSearch('main'));
+    searchBtnRegression?.addEventListener('click', () => performSearch('sub'));
+    searchBtnMetadata?.addEventListener('click', () => performSearch('metadata'));
+    attachTableEventListeners();
 });
 
 
@@ -894,118 +963,39 @@ function resetAllFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('searchSubRowInput').value = '';
     document.getElementById('searchMetadataInput').value = '';
-    document.getElementById('filterZeroFails').checked = false; // Uncheck the "hide zero fails" checkbox
-
-    // Reset Level 2 column selection
+    document.getElementById('filterZeroFails').checked = false;
     const columnSelect = document.getElementById('columnSelect');
     if (columnSelect) {
         Array.from(columnSelect.options).forEach(option => {
-            option.selected = (option.value === 'all' || option.value !== 'all'); // Select all options
+            option.selected = (option.value === 'all' || option.value !== 'all');
         });
     }
-
-    // Reset Level 3 filter selection
     const level3FilterSelect = document.getElementById('level3FilterSelect');
     if (level3FilterSelect) {
         Array.from(level3FilterSelect.options).forEach(option => {
-            option.selected = (option.value === 'all' || option.value !== 'all'); // Select all options
+            option.selected = (option.value === 'all' || option.value !== 'all');
         });
     }
 
-    // Re-trigger the table generation and filtering process
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            try {
-                const yamlContent = e.target.result;
-                const data = jsyaml.load(yamlContent);
-                currentYamlData = data;
-                populateColumnSelection(data);
-                populateLevel3Filter(data);
-                generateTable(data); // Regenerate table with no filters
-                updateRowVisibility(); // Ensure all rows are visible after reset
-                updateSummaryTable(); // NEW: Update summary table after reset
-                attachCommentBoxListeners(); // NEW: Re-attach listeners after reset
-            } catch (error) {
-                console.error(error);
-            }
-        };
-        reader.readAsText(fileInput.files[0]);
+    // Instead of reading from fileInput, we now check currentYamlData
+    if (currentYamlData) {
+        // Re-process the current data
+        populateColumnSelection(currentYamlData);
+        populateLevel3Filter(currentYamlData);
+        generateTable(currentYamlData);
+        updateRowVisibility();
+        updateSummaryTable();
+        attachCommentBoxListeners();
     } else {
         document.getElementById('output').innerHTML = '';
         currentYamlData = null;
         document.getElementById('columnSelect').innerHTML = '';
         document.getElementById('level3FilterSelect').innerHTML = '';
-        // Also clear summary if no file is loaded
         document.querySelectorAll('.summary-table-container').forEach(container => container.innerHTML = '');
     }
+    // Optionally, reset the dropdown selection
+    document.getElementById('fileDropdown').value = '';
 }
-
-
-document.addEventListener("DOMContentLoaded", () => {
-    const expandAllBtn = document.getElementById("expandAllBtn");
-    const collapseAllBtn = document.getElementById("collapseAllBtn");
-    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
-    const applyColumnSelectionBtn = document.getElementById('applyColumnSelectionBtn');
-    const applyLevel3FilterBtn = document.getElementById('applyLevel3FilterBtn'); // New button
-
-    // Search buttons
-    const searchBtnRegressionSet = document.getElementById('searchBtnRegressionSet');
-    const searchBtnRegression = document.getElementById('searchBtnRegression');
-    const searchBtnMetadata = document.getElementById('searchBtnMetadata');
-
-
-    expandAllBtn?.addEventListener("click", () => {
-        document.querySelectorAll(".expandable-row").forEach(row => {
-            const rowId = row.id;
-            const btn = row.querySelector(".expand-btn");
-            // Only expand if not already expanded and not filtered out
-            if (btn && !btn.classList.contains("expanded") && !row.classList.contains('filtered-out')) {
-                toggleRow(rowId);
-            }
-        });
-    });
-
-    collapseAllBtn?.addEventListener("click", () => {
-        document.querySelectorAll(".expandable-row").forEach(row => {
-            const rowId = row.id;
-            const btn = row.querySelector(".expand-btn");
-            if (btn && btn.classList.contains("expanded")) {
-                toggleRow(rowId);
-            }
-        });
-    });
-
-    // Add event listener for the new reset button
-    resetFiltersBtn?.addEventListener('click', resetAllFilters);
-
-    // Add event listener for the Level 2 column selection button
-    applyColumnSelectionBtn?.addEventListener('click', () => {
-        if (currentYamlData) {
-            generateTable(currentYamlData); // Re-generate table with current selections
-            updateRowVisibility(); // Apply search filters after regenerating
-            updateSummaryTable();
-        }
-    });
-
-    // NEW: Add event listener for the Level 3 filter button
-    applyLevel3FilterBtn?.addEventListener('click', () => {
-        if (currentYamlData) {
-            generateTable(currentYamlData); // Re-generate table with current selections
-            updateRowVisibility(); // Apply search filters after regenerating
-            updateSummaryTable();
-        }
-    });
-
-    // Event listeners for search buttons
-    searchBtnRegressionSet?.addEventListener('click', () => performSearch('main'));
-    searchBtnRegression?.addEventListener('click', () => performSearch('sub'));
-    searchBtnMetadata?.addEventListener('click', () => performSearch('metadata'));
-
-    // Initial attachment of event listeners for static elements
-    attachTableEventListeners(); // Call this once on DOMContentLoaded
-});
 
 // NEW: Function to attach event listeners to comment boxes
 function attachCommentBoxListeners() {
@@ -1015,17 +1005,16 @@ function attachCommentBoxListeners() {
     });
 }
 
-// NEW: Event handler for comment box input
+// Modified loadComments and saveComments to use the selected file name as ID
 function handleCommentInput(event) {
     const textarea = event.target;
     const commentId = textarea.dataset.commentId;
     if (commentId) {
         currentFileComments[commentId] = textarea.value;
-        // Get the current file ID to save comments
-        const fileInput = document.getElementById('fileInput');
-        if (fileInput.files[0]) {
-            const fileId = `${fileInput.files[0].name}-${fileInput.files[0].size}`;
-            saveComments(fileId);
+        const fileDropdown = document.getElementById('fileDropdown');
+        const selectedFileName = fileDropdown.value;
+        if (selectedFileName) {
+            saveComments(selectedFileName); // Use selected file name as ID
         }
     }
 }
